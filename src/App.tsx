@@ -15,11 +15,11 @@ import { ExportCardModal } from './components/ExportCardModal';
 import { MobileTabBar } from './components/MobileTabBar';
 import { Footer } from './components/Footer';
 import { TokenModal } from './components/TokenModal';
+import { TokenGate } from './components/TokenGate';
 import { fetchUserSummary, syncLeaderboardEntries, getStoredToken } from './services/githubApi';
-import { BRADLEY_DEMO_DATA } from './services/mockData';
 import { INITIAL_LEADERBOARD_PROFILES } from './services/leaderboardData';
 import type { UserSummaryData } from './types/github';
-import { AlertCircle, Sparkles, KeyRound } from 'lucide-react';
+import { AlertCircle, KeyRound, RefreshCw } from 'lucide-react';
 
 const LEADERBOARD_STORAGE_KEY = 'gitpulse_leaderboard_roster_v2';
 
@@ -63,9 +63,8 @@ export function App() {
   const [activePage, setActivePage] = useState<ActivePage>(getInitialPage);
   const [username, setUsername] = useState(getInitialUsername);
   const [summary, setSummary] = useState<UserSummaryData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isDemoActive, setIsDemoActive] = useState(false);
 
   // Leaderboard profiles state
   const [leaderboardProfiles, setLeaderboardProfiles] = useState<UserSummaryData[]>(
@@ -125,7 +124,6 @@ export function App() {
     async (targetUser: string, bypassCache = false) => {
       setIsLoading(true);
       setError(null);
-      setIsDemoActive(false);
 
       // Update URL search param without full reload
       const url = new URL(window.location.href);
@@ -141,23 +139,8 @@ export function App() {
       } catch (err: any) {
         console.error('Fetch error:', err);
         const errMsg = err.message || 'Failed to fetch GitPulse developer profile.';
-
-        // Check if targetUser is in our leaderboard presets
-        const preset = INITIAL_LEADERBOARD_PROFILES.find(
-          (p) => p.user.login.toLowerCase() === targetUser.toLowerCase()
-        );
-
-        if (targetUser.toLowerCase() === 'bradleyjoejoseph') {
-          setSummary(BRADLEY_DEMO_DATA);
-          setIsDemoActive(true);
-          setError(null);
-        } else if (preset) {
-          setSummary(preset);
-          setUsername(preset.user.login);
-          setError(null);
-        } else {
-          setError(errMsg);
-        }
+        setError(errMsg);
+        setSummary(null);
       } finally {
         setIsLoading(false);
       }
@@ -165,17 +148,21 @@ export function App() {
     [upsertIntoLeaderboard]
   );
 
-  // Initial profile fetch + automatic live leaderboard sync every 5 minutes
+  // Initial profile fetch + automatic live leaderboard sync every 5 minutes (only when authenticated)
   useEffect(() => {
-    loadUserData(username);
-    handleSyncLeaderboard(false);
-
-    const intervalId = window.setInterval(() => {
+    if (hasGhToken) {
+      loadUserData(username);
       handleSyncLeaderboard(false);
-    }, 5 * 60 * 1000);
 
-    return () => window.clearInterval(intervalId);
-  }, []);
+      const intervalId = window.setInterval(() => {
+        handleSyncLeaderboard(false);
+      }, 5 * 60 * 1000);
+
+      return () => window.clearInterval(intervalId);
+    } else {
+      setIsLoading(false);
+    }
+  }, [hasGhToken, loadUserData, handleSyncLeaderboard, username]);
 
   const handleChangePage = (page: ActivePage) => {
     setActivePage(page);
@@ -201,13 +188,6 @@ export function App() {
     }
   };
 
-  const handleUseDemo = () => {
-    setSummary(BRADLEY_DEMO_DATA);
-    setUsername('bradleyjoejoseph');
-    setError(null);
-    setIsDemoActive(true);
-  };
-
   const handleAddLeaderboardProfile = async (userToAdd: string) => {
     setIsAddingToLeaderboard(true);
     setLeaderboardAddError(null);
@@ -226,6 +206,20 @@ export function App() {
     setCompareOpponent(opponentLogin);
     setIsCompareModalOpen(true);
   };
+
+  if (!hasGhToken) {
+    return (
+      <TokenGate
+        onTokenUnlocked={(authenticatedUser) => {
+          setHasGhToken(true);
+          const initial = authenticatedUser || username || 'bradleyjoejoseph';
+          loadUserData(initial);
+        }}
+        theme={theme}
+        onThemeChange={setTheme}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-canvas)] text-[var(--text-primary)] transition-colors">
@@ -262,29 +256,15 @@ export function App() {
           />
         ) : (
           <>
-            {/* Search Bar & Demo Presets */}
+            {/* Search Bar */}
             <SearchBar
               onSearch={handleSearch}
               isLoading={isLoading}
               currentUsername={username}
             />
 
-            {/* Demo Mode Notice */}
-            {isDemoActive && (
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[#2997ff] text-xs">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-400" />
-                    <span>
-                      <strong>Interactive Showcase:</strong> Displaying verified developer profile data for Bradley Joseph.
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Error banner */}
-            {error && !isDemoActive && (
+            {error && (
               <div className="max-w-4xl mx-auto px-4 mt-6">
                 <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-2.5">
@@ -298,16 +278,17 @@ export function App() {
                     <button
                       onClick={() => setIsTokenModalOpen(true)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#2997ff] hover:bg-[#1a85ea] text-white shadow-md shadow-blue-500/20 transition-all cursor-pointer min-h-[32px]"
-                      title="Add a GitHub Personal Access Token to boost rate limit to 5,000 req/hr"
+                      title="Update GitHub Personal Access Token"
                     >
                       <KeyRound className="w-3.5 h-3.5" />
-                      <span>Add Token (5,000 req/hr)</span>
+                      <span>Manage Token</span>
                     </button>
                     <button
-                      onClick={handleUseDemo}
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/20 hover:bg-red-500/30 text-white transition-colors cursor-pointer min-h-[32px]"
+                      onClick={handleRefresh}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--bg-surface)] hover:bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-primary)] transition-all cursor-pointer min-h-[32px]"
                     >
-                      Load Demo Showcase
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Retry</span>
                     </button>
                   </div>
                 </div>

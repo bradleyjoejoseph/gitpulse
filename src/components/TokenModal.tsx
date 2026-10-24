@@ -102,11 +102,7 @@ export const TokenModal: React.FC<TokenModalProps> = ({
   const handleRemove = () => {
     setStoredToken(null);
     setActiveToken(null);
-    setFeedback({
-      type: 'success',
-      message: 'Token removed. GitPulse is now using standard unauthenticated limits (60 req/hr).',
-    });
-    fetchRateLimitStatus().then((rl) => setRateLimit(rl));
+    onClose();
     if (onTokenUpdated) onTokenUpdated();
   };
 

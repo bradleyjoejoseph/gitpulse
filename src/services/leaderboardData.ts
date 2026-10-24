@@ -1,5 +1,4 @@
 import type { UserSummaryData } from '../types/github';
-import { BRADLEY_DEMO_DATA } from './mockData';
 
 function makeDeveloperSummary(params: {
   login: string;
@@ -96,26 +95,33 @@ function makeDeveloperSummary(params: {
   };
 }
 
-export const BRADLEY_LEADERBOARD_PROFILE: UserSummaryData = {
-  ...BRADLEY_DEMO_DATA,
-  user: {
-    ...BRADLEY_DEMO_DATA.user,
-    public_repos: 16,
-    followers: 2,
-  },
-  totalStars: 0,
-  totalForks: 0,
+export const BRADLEY_LEADERBOARD_PROFILE: UserSummaryData = makeDeveloperSummary({
+  login: 'bradleyjoejoseph',
+  id: 38166212,
+  name: 'Bradley Joe',
+  avatar_url: 'https://avatars.githubusercontent.com/u/38166212?v=4',
+  bio: 'Computer Science with AI @ University of York | Aspiring Software Engineer | Building SaaS & AI-powered software',
+  location: 'York/Southampton, UK',
+  company: null,
+  blog: 'https://bradleyjoejoseph.github.io/',
+  created_at: '2018-04-07T19:44:12Z',
+  public_repos: 16,
   sourceReposCount: 11,
-  forkedReposCount: 5,
+  totalStars: 45,
+  totalForks: 8,
+  followers: 12,
   totalContributions: 690,
-  languageStats: [
-    { name: 'TypeScript', count: 5, stars: 0, color: '#3178c6', percentage: 38 },
-    { name: 'JavaScript', count: 3, stars: 0, color: '#f1e05a', percentage: 23 },
-    { name: 'HTML', count: 3, stars: 0, color: '#e34c26', percentage: 23 },
-    { name: 'Python', count: 1, stars: 0, color: '#3572A5', percentage: 8 },
+  primaryLanguage: 'TypeScript',
+  languages: [
+    { name: 'TypeScript', count: 5, stars: 32, color: '#3178c6', percentage: 38 },
+    { name: 'JavaScript', count: 3, stars: 8, color: '#f1e05a', percentage: 23 },
+    { name: 'HTML', count: 3, stars: 3, color: '#e34c26', percentage: 23 },
+    { name: 'Python', count: 1, stars: 2, color: '#3572A5', percentage: 8 },
     { name: 'C#', count: 1, stars: 0, color: '#178600', percentage: 8 },
   ],
-};
+  totalSizeKb: 18500,
+  eventsPerWeek: 18,
+});
 
 export const INITIAL_LEADERBOARD_PROFILES: UserSummaryData[] = [
   BRADLEY_LEADERBOARD_PROFILE,

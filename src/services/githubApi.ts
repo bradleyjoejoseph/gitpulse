@@ -195,7 +195,7 @@ export async function fetchUserSummary(
     const resetDate = new Date(latestRateLimit.reset * 1000).toLocaleTimeString();
     throw new Error(
       isRateLimited
-        ? `GitHub API rate limit reached. Resets at ${resetDate}. Please try again shortly or explore demo developer profiles.`
+        ? `GitHub API rate limit reached. Resets at ${resetDate}. Please verify or refresh your Personal Access Token.`
         : `GitHub API request could not be completed. Please try again shortly.`
     );
   }
