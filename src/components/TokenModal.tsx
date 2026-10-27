@@ -20,6 +20,7 @@ import {
   setStoredToken,
   validateAndSaveToken,
   fetchRateLimitStatus,
+  hasCustomToken,
 } from '../services/githubApi';
 import type { RateLimitInfo } from '../types/github';
 
@@ -175,7 +176,11 @@ export const TokenModal: React.FC<TokenModalProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold">
-                    {activeToken ? 'Personal Token Connected' : 'Unauthenticated (Public IP Mode)'}
+                    {hasCustomToken()
+                      ? 'Custom Personal Token Connected'
+                      : activeToken
+                      ? 'Built-In App Token Connected'
+                      : 'Unauthenticated (Public IP Mode)'}
                   </span>
                   <span
                     className={`text-[10px] font-mono px-2 py-0.5 rounded-full uppercase font-bold ${
@@ -209,15 +214,15 @@ export const TokenModal: React.FC<TokenModalProps> = ({
               >
                 <RefreshCw className="w-3.5 h-3.5" />
               </button>
-              {activeToken && (
+              {hasCustomToken() && (
                 <button
                   type="button"
                   onClick={handleRemove}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-medium transition-all cursor-pointer min-h-[32px]"
-                  title="Remove stored token"
+                  title="Remove custom stored token and revert to built-in token"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Disconnect</span>
+                  <span>Revert to Default</span>
                 </button>
               )}
             </div>
