@@ -636,17 +636,18 @@ export const CompareModal: React.FC<CompareModalProps> = ({
                 <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
                   <button
                     onClick={() => setShowStickmanFight(true)}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-[#2997ff] to-purple-600 hover:from-[#3ea3ff] hover:to-purple-500 text-white shadow-md shadow-blue-500/25 transition-all active:scale-95 cursor-pointer min-h-[44px]"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-[#2997ff] via-indigo-600 to-purple-600 hover:from-[#3ea3ff] hover:to-purple-500 text-white shadow-lg shadow-purple-500/25 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer min-h-[44px] border border-white/20 animate-pulse"
                   >
-                    <Swords className="w-4 h-4" />
-                    <span>View Fight</span>
+                    <Swords className="w-4 h-4 text-amber-300" />
+                    <span>Watch Stickman Fight ⚔️</span>
                   </button>
 
                   <button
                     onClick={handleReplayBattle}
-                    className="flex-1 sm:flex-none flex items-center justify-center px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15 transition-all active:scale-95 cursor-pointer min-h-[44px]"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15 transition-all active:scale-95 cursor-pointer min-h-[44px]"
                   >
-                    Replay Fight
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Re-roll Stats</span>
                   </button>
                 </div>
               </div>

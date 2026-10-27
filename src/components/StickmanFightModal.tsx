@@ -1,5 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, RotateCcw, FastForward, Trophy } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  X,
+  RotateCcw,
+  FastForward,
+  Trophy,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { UserSummaryData } from '../types/github';
 
@@ -12,7 +19,191 @@ interface StickmanFightModalProps {
   winsB: number;
 }
 
-type FightPhase = 'intro' | 'round1' | 'round2' | 'finisher' | 'ko' | 'victory';
+type FightPhase =
+  | 'intro'
+  | 'dash_clash'
+  | 'combo_flurry'
+  | 'star_barrage'
+  | 'finisher_charge'
+  | 'hyper_beam'
+  | 'ko'
+  | 'victory';
+
+// Procedural Retro Arcade Web Audio Synthesizer
+class RetroArcadeAudio {
+  private ctx: AudioContext | null = null;
+  public enabled: boolean = true;
+
+  private getContext(): AudioContext | null {
+    if (!this.enabled) return null;
+    if (!this.ctx && typeof window !== 'undefined') {
+      const AudioCtx =
+        window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    return this.ctx;
+  }
+
+  playWhoosh() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(420, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } catch {}
+  }
+
+  playClash() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      // Metallic sword strike
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1400, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(260, ctx.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.28, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.18);
+    } catch {}
+  }
+
+  playPunch() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(240, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.35, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+    } catch {}
+  }
+
+  playEnergyCharge() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(160, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.8);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.8);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.85);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.85);
+    } catch {}
+  }
+
+  playHyperBeam() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      // Powerful futuristic laser burst
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(750, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(90, ctx.currentTime + 0.5);
+      gain.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    } catch {}
+  }
+
+  playKO() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      // Low heavy sub-bass explosion
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(130, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + 0.8);
+      gain.gain.setValueAtTime(0.65, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.8);
+    } catch {}
+  }
+
+  playVictory() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        const startTime = ctx.currentTime + idx * 0.1;
+        gain.gain.setValueAtTime(0.2, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.3);
+      });
+    } catch {}
+  }
+}
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: string;
+  size: number;
+  shape?: 'spark' | 'ring' | 'star';
+}
+
+interface FloatingText {
+  id: number;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+  life: number;
+  scale: number;
+}
 
 export const StickmanFightModal: React.FC<StickmanFightModalProps> = ({
   isOpen,
@@ -22,192 +213,766 @@ export const StickmanFightModal: React.FC<StickmanFightModalProps> = ({
   winsA,
   winsB,
 }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioRef = useRef<RetroArcadeAudio>(new RetroArcadeAudio());
+
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [speedMultiplier, setSpeedMultiplier] = useState<1 | 2>(1);
   const [phase, setPhase] = useState<FightPhase>('intro');
   const [hpA, setHpA] = useState(100);
   const [hpB, setHpB] = useState(100);
-  const [actionText, setActionText] = useState('READY...');
-  const [fightTime, setFightTime] = useState(0);
-  const animationFrameRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(0);
+  const [damageLagA, setDamageLagA] = useState(100);
+  const [damageLagB, setDamageLagB] = useState(100);
+  const [actionText, setActionText] = useState('ROUND 1: FIGHT!');
+  const [screenShake, setScreenShake] = useState(0);
+
+  const startTimeRef = useRef<number>(Date.now());
+  const fightTimeRef = useRef<number>(0);
+  const animFrameRef = useRef<number | null>(null);
+  const particlesRef = useRef<Particle[]>([]);
+  const floatingTextsRef = useRef<FloatingText[]>([]);
+  const lastSoundEventRef = useRef<Record<string, number>>({});
 
   const winner: 'A' | 'B' | 'TIE' =
     winsA > winsB ? 'A' : winsB > winsA ? 'B' : 'TIE';
 
-  const resetFight = () => {
+  const triggerSound = useCallback((type: 'whoosh' | 'clash' | 'punch' | 'energy' | 'beam' | 'ko' | 'victory') => {
+    const now = Date.now();
+    const last = lastSoundEventRef.current[type] || 0;
+    if (now - last < 80) return; // Throttle duplicate sounds
+    lastSoundEventRef.current[type] = now;
+
+    const audio = audioRef.current;
+    if (type === 'whoosh') audio.playWhoosh();
+    else if (type === 'clash') audio.playClash();
+    else if (type === 'punch') audio.playPunch();
+    else if (type === 'energy') audio.playEnergyCharge();
+    else if (type === 'beam') audio.playHyperBeam();
+    else if (type === 'ko') audio.playKO();
+    else if (type === 'victory') audio.playVictory();
+  }, []);
+
+  const addParticles = useCallback(
+    (x: number, y: number, count: number, color: string, speed = 4, shape: 'spark' | 'ring' | 'star' = 'spark') => {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const s = Math.random() * speed + 1;
+        particlesRef.current.push({
+          x,
+          y,
+          vx: Math.cos(angle) * s,
+          vy: Math.sin(angle) * s - (shape === 'spark' ? 1.5 : 0),
+          life: 1,
+          maxLife: 20 + Math.random() * 25,
+          color,
+          size: Math.random() * 3 + 2,
+          shape,
+        });
+      }
+    },
+    []
+  );
+
+  const addFloatingText = useCallback((text: string, x: number, y: number, color: string) => {
+    floatingTextsRef.current.push({
+      id: Math.random(),
+      text,
+      x,
+      y,
+      color,
+      life: 1,
+      scale: 1.4,
+    });
+  }, []);
+
+  const resetFight = useCallback(() => {
     setPhase('intro');
     setHpA(100);
     setHpB(100);
-    setActionText('READY...');
+    setDamageLagA(100);
+    setDamageLagB(100);
+    setActionText('ROUND 1: FIGHT!');
+    setScreenShake(0);
+    particlesRef.current = [];
+    floatingTextsRef.current = [];
     startTimeRef.current = Date.now();
+    fightTimeRef.current = 0;
+  }, []);
+
+  const toggleSound = () => {
+    setSoundEnabled((prev) => {
+      audioRef.current.enabled = !prev;
+      return !prev;
+    });
   };
 
+  const handleSkipToFinisher = () => {
+    // Jump directly to finisher phase (6.5s in normal time)
+    const targetSimulated = 6.4;
+    startTimeRef.current = Date.now() - (targetSimulated / speedMultiplier) * 1000;
+  };
+
+  // Main 60 FPS Canvas Game Loop
   useEffect(() => {
     if (!isOpen) return;
     resetFight();
 
-    const updateLoop = () => {
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      setFightTime(elapsed);
+    let hasTriggeredKO = false;
+    let hasTriggeredVictory = false;
 
-      // Phase 0: Intro (0s - 1.4s)
-      if (elapsed < 1.4) {
-        setPhase('intro');
-        setActionText(elapsed < 0.7 ? 'READY...' : 'FIGHT!');
-        setHpA(100);
-        setHpB(100);
+    const render = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        animFrameRef.current = requestAnimationFrame(render);
+        return;
       }
-      // Phase 1: Round 1 clash (1.4s - 3.6s)
-      else if (elapsed < 3.6) {
-        setPhase('round1');
-        setActionText(elapsed < 2.5 ? 'CLASH!' : 'COUNTER!');
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const now = Date.now();
+      const rawElapsed = (now - startTimeRef.current) / 1000;
+      const t = rawElapsed * speedMultiplier;
+      fightTimeRef.current = t;
+
+      // Arena Canvas Geometry
+      const width = canvas.width;
+      const height = canvas.height;
+      const groundY = height * 0.76;
+
+      // Determine Phase and Combat Stats
+      let currentPhase: FightPhase = 'intro';
+      let text = 'READY... FIGHT!';
+      let targetHpA = 100;
+      let targetHpB = 100;
+
+      // 0.0s - 1.2s: INTRO DASH
+      if (t < 1.2) {
+        currentPhase = 'intro';
+        text = t < 0.6 ? 'READY...' : 'ROUND 1: FIGHT!';
+        targetHpA = 100;
+        targetHpB = 100;
+      }
+      // 1.2s - 2.8s: DASH & SWORD CLASH
+      else if (t < 2.8) {
+        currentPhase = 'dash_clash';
+        text = 'CYBER BLADE CLASH!';
         if (winner === 'A') {
-          setHpB(Math.max(65, 100 - (elapsed - 1.4) * 22));
-          setHpA(Math.max(85, 100 - (elapsed - 1.4) * 9));
+          targetHpA = 92;
+          targetHpB = Math.max(75, 100 - (t - 1.2) * 15);
         } else if (winner === 'B') {
-          setHpA(Math.max(65, 100 - (elapsed - 1.4) * 22));
-          setHpB(Math.max(85, 100 - (elapsed - 1.4) * 9));
+          targetHpB = 92;
+          targetHpA = Math.max(75, 100 - (t - 1.2) * 15);
         } else {
-          setHpA(Math.max(75, 100 - (elapsed - 1.4) * 15));
-          setHpB(Math.max(75, 100 - (elapsed - 1.4) * 15));
+          targetHpA = 85;
+          targetHpB = 85;
         }
       }
-      // Phase 2: Round 2 rapid flurry (3.6s - 5.8s)
-      else if (elapsed < 5.8) {
-        setPhase('round2');
-        setActionText(elapsed < 4.8 ? 'COMBO x5!' : 'SUPER CHARGE!');
+      // 2.8s - 4.8s: RAPID COMMIT COMBO
+      else if (t < 4.8) {
+        currentPhase = 'combo_flurry';
+        text = 'COMMIT MULTI-STRIKE x8!';
         if (winner === 'A') {
-          setHpB(Math.max(25, 65 - (elapsed - 3.6) * 20));
-          setHpA(Math.max(70, 85 - (elapsed - 3.6) * 8));
+          targetHpA = 80;
+          targetHpB = Math.max(45, 75 - (t - 2.8) * 15);
         } else if (winner === 'B') {
-          setHpA(Math.max(25, 65 - (elapsed - 3.6) * 20));
-          setHpB(Math.max(70, 85 - (elapsed - 3.6) * 8));
+          targetHpB = 80;
+          targetHpA = Math.max(45, 75 - (t - 2.8) * 15);
         } else {
-          setHpA(Math.max(45, 75 - (elapsed - 3.6) * 15));
-          setHpB(Math.max(45, 75 - (elapsed - 3.6) * 15));
+          targetHpA = 60;
+          targetHpB = 60;
         }
       }
-      // Phase 3: Finishing Move (5.8s - 7.6s)
-      else if (elapsed < 7.6) {
-        setPhase('finisher');
-        setActionText('SPECIAL FINISHER!');
+      // 4.8s - 6.5s: STAR SHURIKENS & COUNTER
+      else if (t < 6.5) {
+        currentPhase = 'star_barrage';
+        text = 'STAR BARRAGE & TELEPORT!';
         if (winner === 'A') {
-          setHpB(Math.max(0, 25 - (elapsed - 5.8) * 25));
+          targetHpA = 70;
+          targetHpB = Math.max(25, 45 - (t - 4.8) * 12);
         } else if (winner === 'B') {
-          setHpA(Math.max(0, 25 - (elapsed - 5.8) * 25));
+          targetHpB = 70;
+          targetHpA = Math.max(25, 45 - (t - 4.8) * 12);
         } else {
-          setHpA(0);
-          setHpB(0);
+          targetHpA = 35;
+          targetHpB = 35;
         }
       }
-      // Phase 4: K.O. (7.6s - 9.0s)
-      else if (elapsed < 9.0) {
-        setPhase('ko');
-        setActionText(winner === 'TIE' ? 'DOUBLE K.O.!' : 'K.O.!');
-        if (winner === 'A') setHpB(0);
-        else if (winner === 'B') setHpA(0);
+      // 6.5s - 7.5s: CHARGE HYPER BEAM
+      else if (t < 7.5) {
+        currentPhase = 'finisher_charge';
+        text = 'SPECIAL: GIT PUSH --FORCE!';
+        if (winner === 'A') targetHpB = 25;
+        else if (winner === 'B') targetHpA = 25;
       }
-      // Phase 5: Victory Pose (9.0s+)
+      // 7.5s - 8.8s: UNLEASH HYPER BEAM
+      else if (t < 8.8) {
+        currentPhase = 'hyper_beam';
+        text = 'SUPER FINISHER: OBLITERATION!';
+        if (winner === 'A') targetHpB = Math.max(0, 25 - (t - 7.5) * 20);
+        else if (winner === 'B') targetHpA = Math.max(0, 25 - (t - 7.5) * 20);
+        else {
+          targetHpA = 0;
+          targetHpB = 0;
+        }
+      }
+      // 8.8s - 10.2s: K.O. MOMENT
+      else if (t < 10.2) {
+        currentPhase = 'ko';
+        text = winner === 'TIE' ? 'DOUBLE K.O.!' : 'CRITICAL K.O.!';
+        if (winner === 'A') targetHpB = 0;
+        else if (winner === 'B') targetHpA = 0;
+        else {
+          targetHpA = 0;
+          targetHpB = 0;
+        }
+
+        if (!hasTriggeredKO) {
+          hasTriggeredKO = true;
+          triggerSound('ko');
+          setScreenShake(14);
+          addFloatingText('K.O.!', width / 2, height * 0.35, '#fbbf24');
+        }
+      }
+      // 10.2s+: VICTORY POSE
       else {
-        if (phase !== 'victory') {
-          setPhase('victory');
-          setActionText(
-            winner === 'A'
-              ? `@${userA.user.login} WINS!`
-              : winner === 'B'
-              ? `@${userB.user.login} WINS!`
-              : 'DRAW DEADLOCK!'
-          );
+        currentPhase = 'victory';
+        text =
+          winner === 'A'
+            ? `@${userA.user.login} VICTORIOUS!`
+            : winner === 'B'
+            ? `@${userB.user.login} VICTORIOUS!`
+            : 'STALEMATE DRAW!';
+
+        if (!hasTriggeredVictory) {
+          hasTriggeredVictory = true;
+          triggerSound('victory');
           confetti({
-            particleCount: 50,
-            spread: 70,
-            origin: { y: 0.6 },
+            particleCount: 75,
+            spread: 80,
+            origin: { y: 0.55 },
           });
         }
       }
 
-      animationFrameRef.current = requestAnimationFrame(updateLoop);
+      setPhase(currentPhase);
+      setActionText(text);
+      setHpA(targetHpA);
+      setHpB(targetHpB);
+
+      // Smooth lag bar decay
+      setDamageLagA((prev) => Math.max(targetHpA, prev - 0.4));
+      setDamageLagB((prev) => Math.max(targetHpB, prev - 0.4));
+
+      // Calculate Fighter Coordinates & Poses
+      let xA = width * 0.28;
+      let yA = groundY;
+      let xB = width * 0.72;
+      let yB = groundY;
+      let swordAngleA = 0;
+      let swordAngleB = 0;
+      let armAngleA = 0;
+      let armAngleB = 0;
+      let legAngleA = 0;
+      let legAngleB = 0;
+
+      // Shake attenuation
+      setScreenShake((prev) => Math.max(0, prev * 0.9));
+
+      ctx.save();
+
+      // Screen Shake Transform
+      if (screenShake > 0.5) {
+        const shakeX = (Math.random() - 0.5) * screenShake;
+        const shakeY = (Math.random() - 0.5) * screenShake;
+        ctx.translate(shakeX, shakeY);
+      }
+
+      // 1. Draw Deep Cyber Battle Stage
+      ctx.fillStyle = '#070a12';
+      ctx.fillRect(0, 0, width, height);
+
+      // Cyber Grid Stage Background
+      const grad = ctx.createLinearGradient(0, groundY - 120, 0, groundY);
+      grad.addColorStop(0, 'rgba(41, 151, 255, 0.0)');
+      grad.addColorStop(1, 'rgba(41, 151, 255, 0.12)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, groundY - 120, width, 120);
+
+      // Neon Horizon Line
+      ctx.strokeStyle = 'rgba(41, 151, 255, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, groundY);
+      ctx.lineTo(width, groundY);
+      ctx.stroke();
+
+      // Floor Grid Lines
+      ctx.strokeStyle = 'rgba(41, 151, 255, 0.15)';
+      ctx.lineWidth = 1;
+      const numLines = 14;
+      for (let i = 0; i <= numLines; i++) {
+        const xPos = (width / numLines) * i;
+        ctx.beginPath();
+        ctx.moveTo(xPos, groundY);
+        ctx.lineTo(xPos + (i - numLines / 2) * 18, height);
+        ctx.stroke();
+      }
+
+      // Stage Spotlights
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const spotA = ctx.createRadialGradient(xA, groundY, 10, xA, groundY, 140);
+      spotA.addColorStop(0, 'rgba(41, 151, 255, 0.25)');
+      spotA.addColorStop(1, 'rgba(41, 151, 255, 0)');
+      ctx.fillStyle = spotA;
+      ctx.beginPath();
+      ctx.ellipse(xA, groundY + 6, 90, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const spotB = ctx.createRadialGradient(xB, groundY, 10, xB, groundY, 140);
+      spotB.addColorStop(0, 'rgba(192, 132, 252, 0.25)');
+      spotB.addColorStop(1, 'rgba(192, 132, 252, 0)');
+      ctx.fillStyle = spotB;
+      ctx.beginPath();
+      ctx.ellipse(xB, groundY + 6, 90, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Animate Movement Based On Phase
+      if (currentPhase === 'intro') {
+        xA = width * 0.15 + (width * 0.18) * Math.min(1, t / 1.0);
+        xB = width * 0.85 - (width * 0.18) * Math.min(1, t / 1.0);
+        legAngleA = Math.sin(t * 16) * 0.45;
+        legAngleB = Math.sin(t * 16) * 0.45;
+        swordAngleA = -0.3;
+        swordAngleB = 0.3;
+      } else if (currentPhase === 'dash_clash') {
+        // High speed leap and weapons clash in the center
+        const cycle = Math.sin((t - 1.2) * 8);
+        xA = width * 0.44 + cycle * 25;
+        xB = width * 0.56 - cycle * 25;
+        yA = groundY - Math.abs(Math.sin((t - 1.2) * 4)) * 32;
+        yB = groundY - Math.abs(Math.sin((t - 1.2) * 4)) * 32;
+        swordAngleA = 1.1;
+        swordAngleB = -1.1;
+        armAngleA = 0.6;
+        armAngleB = -0.6;
+
+        // Sound & Clash Sparks
+        if (Math.abs(cycle) < 0.15) {
+          triggerSound('clash');
+          addParticles((xA + xB) / 2, yA - 30, 3, '#ffffff', 5, 'spark');
+          addParticles((xA + xB) / 2, yA - 30, 2, '#38bdf8', 4, 'ring');
+          setScreenShake(4);
+        }
+      } else if (currentPhase === 'combo_flurry') {
+        // Blinding-fast boxing / sword flurry
+        const flurrySpeed = 22;
+        const offset = Math.sin(t * flurrySpeed);
+        xA = width * 0.42 + offset * 12;
+        xB = width * 0.58 - offset * 12;
+        armAngleA = Math.sin(t * 30) * 1.2;
+        armAngleB = Math.cos(t * 30) * 1.2;
+        swordAngleA = Math.sin(t * 26) * 0.8;
+        swordAngleB = -Math.cos(t * 26) * 0.8;
+
+        if (Math.random() < 0.35) {
+          triggerSound('punch');
+          const hitX = (xA + xB) / 2 + (Math.random() - 0.5) * 20;
+          const hitY = groundY - 35 + (Math.random() - 0.5) * 30;
+          addParticles(hitX, hitY, 4, winner === 'A' ? '#38bdf8' : '#c084fc', 4);
+          setScreenShake(3);
+        }
+      } else if (currentPhase === 'star_barrage') {
+        // Flash step teleportation & flying star shurikens
+        const cycle = Math.sin((t - 4.8) * 3.5);
+        if (winner === 'A') {
+          xA = width * 0.36;
+          xB = width * 0.68 + cycle * 15;
+          armAngleA = 0.8;
+          // Spawn flying gold star shurikens from A to B
+          if (Math.random() < 0.25) {
+            triggerSound('whoosh');
+            addParticles(xA + 20, groundY - 40, 1, '#fbbf24', 9, 'star');
+            addFloatingText('STAR CRIT!', xB, groundY - 60, '#fbbf24');
+          }
+        } else {
+          xA = width * 0.32 + cycle * 15;
+          xB = width * 0.64;
+          armAngleB = -0.8;
+          if (Math.random() < 0.25) {
+            triggerSound('whoosh');
+            addParticles(xB - 20, groundY - 40, 1, '#fbbf24', 9, 'star');
+            addFloatingText('STAR CRIT!', xA, groundY - 60, '#fbbf24');
+          }
+        }
+      } else if (currentPhase === 'finisher_charge') {
+        // Energy charge pose with aura flames
+        triggerSound('energy');
+        setScreenShake(2);
+        if (winner === 'A') {
+          xA = width * 0.28;
+          xB = width * 0.72;
+          addParticles(xA + 22, groundY - 38, 3, '#38bdf8', 3, 'ring');
+        } else {
+          xA = width * 0.28;
+          xB = width * 0.72;
+          addParticles(xB - 22, groundY - 38, 3, '#c084fc', 3, 'ring');
+        }
+      } else if (currentPhase === 'hyper_beam') {
+        triggerSound('beam');
+        setScreenShake(9);
+        if (winner === 'A') {
+          xA = width * 0.24;
+          xB = width * 0.78;
+          // Massive Hyper Beam from A to B
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          const beamGrad = ctx.createLinearGradient(xA + 30, 0, xB, 0);
+          beamGrad.addColorStop(0, 'rgba(56, 189, 248, 0.95)');
+          beamGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+          beamGrad.addColorStop(1, 'rgba(56, 189, 248, 0.85)');
+
+          ctx.fillStyle = beamGrad;
+          ctx.beginPath();
+          ctx.roundRect(xA + 28, groundY - 52, xB - xA - 15, 30, 8);
+          ctx.fill();
+
+          // Outer Beam Glow
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+          ctx.fillRect(xA + 20, groundY - 62, xB - xA + 10, 50);
+
+          // Impact Sparks at target B
+          addParticles(xB, groundY - 38, 8, '#ffffff', 8, 'spark');
+          addParticles(xB, groundY - 38, 4, '#38bdf8', 6, 'ring');
+          ctx.restore();
+        } else {
+          xA = width * 0.22;
+          xB = width * 0.76;
+          // Beam from B to A
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          const beamGrad = ctx.createLinearGradient(xB - 30, 0, xA, 0);
+          beamGrad.addColorStop(0, 'rgba(192, 132, 252, 0.95)');
+          beamGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+          beamGrad.addColorStop(1, 'rgba(192, 132, 252, 0.85)');
+
+          ctx.fillStyle = beamGrad;
+          ctx.beginPath();
+          ctx.roundRect(xA + 10, groundY - 52, xB - xA - 28, 30, 8);
+          ctx.fill();
+
+          ctx.fillStyle = 'rgba(192, 132, 252, 0.35)';
+          ctx.fillRect(xA - 5, groundY - 62, xB - xA + 10, 50);
+
+          addParticles(xA, groundY - 38, 8, '#ffffff', 8, 'spark');
+          addParticles(xA, groundY - 38, 4, '#c084fc', 6, 'ring');
+          ctx.restore();
+        }
+      } else {
+        // K.O. & Victory Stance
+        if (winner === 'A') {
+          xA = width * 0.38;
+          xB = width * 0.84;
+          yB = groundY + 8; // Knocked down
+        } else if (winner === 'B') {
+          xA = width * 0.16;
+          yA = groundY + 8; // Knocked down
+          xB = width * 0.62;
+        } else {
+          xA = width * 0.25;
+          xB = width * 0.75;
+          yA = groundY + 8;
+          yB = groundY + 8;
+        }
+      }
+
+      // Draw Stickman Function
+      const drawStickman = (
+        x: number,
+        y: number,
+        isPlayerA: boolean,
+        isKO: boolean,
+        isVictory: boolean,
+        isCharging: boolean,
+        armAngle: number = 0,
+        swordAngle: number = 0
+      ) => {
+        const color = isPlayerA ? '#38bdf8' : '#c084fc';
+        const darkColor = isPlayerA ? '#0284c7' : '#9333ea';
+        const facing = isPlayerA ? 1 : -1;
+
+        ctx.save();
+        ctx.translate(x, y);
+
+        // Burning Energy Aura
+        if (isCharging || isVictory) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          const auraGrad = ctx.createRadialGradient(0, -35, 15, 0, -35, 65);
+          auraGrad.addColorStop(0, isPlayerA ? 'rgba(56, 189, 248, 0.45)' : 'rgba(192, 132, 252, 0.45)');
+          auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = auraGrad;
+          ctx.beginPath();
+          ctx.arc(0, -35, 65, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        if (isKO) {
+          // Flattened knocked-out stickman pose
+          ctx.strokeStyle = '#64748b';
+          ctx.lineWidth = 3.5;
+          ctx.lineCap = 'round';
+
+          // Body flat on floor
+          ctx.beginPath();
+          ctx.moveTo(-20 * facing, 0);
+          ctx.lineTo(15 * facing, 0);
+          ctx.stroke();
+
+          // Head on ground
+          ctx.fillStyle = '#0f172a';
+          ctx.strokeStyle = '#64748b';
+          ctx.beginPath();
+          ctx.arc(22 * facing, -4, 9, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Limbs splayed
+          ctx.beginPath();
+          ctx.moveTo(-10 * facing, 0);
+          ctx.lineTo(-24 * facing, -12);
+          ctx.moveTo(5 * facing, 0);
+          ctx.lineTo(14 * facing, -14);
+          ctx.stroke();
+
+          // Dizzy stars floating
+          ctx.font = '14px sans-serif';
+          ctx.fillText('💫', 12 * facing, -24);
+          ctx.restore();
+          return;
+        }
+
+        // Stickman Body Dimensions
+        const headR = 10;
+        const headY = -52;
+        const neckY = -42;
+        const hipY = -18;
+
+        // Shadow under feet
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 18, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Limbs & Torso Lines
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 3.8;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Spine
+        ctx.beginPath();
+        ctx.moveTo(0, neckY);
+        ctx.lineTo(0, hipY);
+        ctx.stroke();
+
+        // Legs
+        if (isVictory) {
+          // Confident Stance
+          ctx.beginPath();
+          ctx.moveTo(0, hipY);
+          ctx.lineTo(-14, 0);
+          ctx.moveTo(0, hipY);
+          ctx.lineTo(14, 0);
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(0, hipY);
+          ctx.lineTo(-10 * facing + Math.sin(legAngleA) * 12, 0);
+          ctx.moveTo(0, hipY);
+          ctx.lineTo(12 * facing - Math.sin(legAngleB) * 12, 0);
+          ctx.stroke();
+        }
+
+        // Arms & Weapon
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3.5;
+
+        if (isVictory) {
+          // Arms raised holding golden champion trophy
+          ctx.beginPath();
+          ctx.moveTo(0, neckY + 4);
+          ctx.lineTo(-16, neckY - 20);
+          ctx.moveTo(0, neckY + 4);
+          ctx.lineTo(16, neckY - 20);
+          ctx.stroke();
+
+          // Golden Trophy Cup
+          ctx.fillStyle = '#fbbf24';
+          ctx.strokeStyle = '#d97706';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, neckY - 28, 9, 0, Math.PI, false);
+          ctx.lineTo(0, neckY - 18);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          // Combat Stance Arms
+          const armReach = isCharging ? 28 : 20;
+          ctx.beginPath();
+          ctx.moveTo(0, neckY + 4);
+          ctx.lineTo(armReach * facing, neckY - 8 + armAngle * 8);
+          ctx.stroke();
+
+          // Energy Blade Katana
+          ctx.save();
+          ctx.translate(armReach * facing, neckY - 8 + armAngle * 8);
+          ctx.rotate((swordAngle || 0.4) * facing);
+
+          // Blade Glow
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 12;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(34 * facing, -16);
+          ctx.stroke();
+
+          // Neon Edge
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(34 * facing, -16);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Head
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, headY, headR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Headband Ribbon Flying In Wind
+        ctx.strokeStyle = darkColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-headR * facing, headY);
+        ctx.quadraticCurveTo(
+          -22 * facing,
+          headY - 6 + Math.sin(t * 12) * 5,
+          -34 * facing,
+          headY - 12 + Math.cos(t * 14) * 6
+        );
+        ctx.stroke();
+
+        ctx.restore();
+      };
+
+      // Draw Both Fighters
+      drawStickman(
+        xA,
+        yA,
+        true,
+        targetHpA <= 0,
+        currentPhase === 'victory' && winner === 'A',
+        currentPhase === 'finisher_charge' && winner === 'A',
+        armAngleA,
+        swordAngleA
+      );
+
+      drawStickman(
+        xB,
+        yB,
+        false,
+        targetHpB <= 0,
+        currentPhase === 'victory' && winner === 'B',
+        currentPhase === 'finisher_charge' && winner === 'B',
+        armAngleB,
+        swordAngleB
+      );
+
+      // 2. Update & Draw Particles (Sparks, Rings, Energy Stars)
+      for (let i = particlesRef.current.length - 1; i >= 0; i--) {
+        const p = particlesRef.current[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 1 / p.maxLife;
+
+        if (p.life <= 0) {
+          particlesRef.current.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.life);
+
+        if (p.shape === 'ring') {
+          ctx.strokeStyle = p.color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, (1 - p.life) * 28 + 4, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (p.shape === 'star') {
+          ctx.fillStyle = p.color;
+          ctx.font = '16px sans-serif';
+          ctx.fillText('★', p.x, p.y);
+        } else {
+          ctx.fillStyle = p.color;
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      // 3. Floating Combat Hit Text
+      for (let i = floatingTextsRef.current.length - 1; i >= 0; i--) {
+        const ft = floatingTextsRef.current[i];
+        ft.y -= 1.2;
+        ft.life -= 0.025;
+        ft.scale = Math.max(1, ft.scale * 0.96);
+
+        if (ft.life <= 0) {
+          floatingTextsRef.current.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, ft.life);
+        ctx.fillStyle = ft.color;
+        ctx.shadowColor = ft.color;
+        ctx.shadowBlur = 8;
+        ctx.font = `bold ${Math.round(14 * ft.scale)}px ui-monospace, SFMono-Regular, monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+      }
+
+      ctx.restore(); // Restore shake transform
+
+      animFrameRef.current = requestAnimationFrame(render);
     };
 
-    animationFrameRef.current = requestAnimationFrame(updateLoop);
+    animFrameRef.current = requestAnimationFrame(render);
 
     return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isOpen, userA, userB, winsA, winsB, winner]);
-
-  const handleSkipToFinisher = () => {
-    startTimeRef.current = Date.now() - 7600;
-  };
+  }, [isOpen, speedMultiplier, winner, userA, userB, triggerSound, addParticles, addFloatingText, resetFight, screenShake]);
 
   if (!isOpen) return null;
-
-  // Calculate dynamic positions & poses for SVG stickmen based on phase and fightTime
-  const getFighterStates = () => {
-    const t = fightTime;
-
-    let posX_A = 180;
-    let posX_B = 460;
-    let poseA = 'idle';
-    let poseB = 'idle';
-
-    if (phase === 'intro') {
-      posX_A = Math.min(200, 100 + t * 90);
-      posX_B = Math.max(440, 540 - t * 90);
-      poseA = 'walk';
-      poseB = 'walk';
-    } else if (phase === 'round1') {
-      const cycle = Math.sin(t * 8);
-      posX_A = 260 + cycle * 35;
-      posX_B = 380 - cycle * 35;
-      poseA = cycle > 0 ? 'punch' : 'block';
-      poseB = cycle > 0 ? 'hurt' : 'kick';
-    } else if (phase === 'round2') {
-      const cycle = Math.sin(t * 14);
-      posX_A = 275 + cycle * 20;
-      posX_B = 365 - cycle * 20;
-      poseA = cycle > 0 ? 'kick' : 'punch';
-      poseB = cycle > 0 ? 'block' : 'punch';
-    } else if (phase === 'finisher') {
-      if (winner === 'A') {
-        posX_A = 295;
-        posX_B = 430;
-        poseA = 'dragon';
-        poseB = 'fly_back';
-      } else if (winner === 'B') {
-        posX_A = 210;
-        posX_B = 345;
-        poseA = 'fly_back';
-        poseB = 'dragon';
-      } else {
-        posX_A = 290;
-        posX_B = 350;
-        poseA = 'clash_center';
-        poseB = 'clash_center';
-      }
-    } else {
-      // ko & victory
-      if (winner === 'A') {
-        posX_A = 280;
-        posX_B = 480;
-        poseA = 'victory';
-        poseB = 'knockout';
-      } else if (winner === 'B') {
-        posX_A = 160;
-        posX_B = 360;
-        poseA = 'knockout';
-        poseB = 'victory';
-      } else {
-        posX_A = 260;
-        posX_B = 380;
-        poseA = 'knockout';
-        poseB = 'knockout';
-      }
-    }
-
-    return { posX_A, posX_B, poseA, poseB };
-  };
-
-  const { posX_A, posX_B, poseA, poseB } = getFighterStates();
 
   return (
     <div
@@ -215,52 +980,66 @@ export const StickmanFightModal: React.FC<StickmanFightModalProps> = ({
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn"
     >
-      <div className="relative w-full max-w-2xl rounded-3xl bg-[#0c1017] border border-white/15 shadow-2xl p-4 sm:p-6 overflow-hidden">
-        {/* Top Floating Glass HUD */}
+      <div className="relative w-full max-w-3xl rounded-3xl bg-[#0c1017] border border-white/15 shadow-2xl p-4 sm:p-6 overflow-hidden">
+        {/* Top Floating Arcade HUD */}
         <div className="flex items-center justify-between gap-3 mb-3">
-          {/* Fighter 1 (Blue) */}
+          {/* Fighter 1 (Blue Cyber Ninja) */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <img
               src={userA.user.avatar_url}
               alt={userA.user.login}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-[#2997ff] object-cover shrink-0 shadow-md"
+              className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl border-2 border-[#38bdf8] object-cover shrink-0 shadow-md shadow-blue-500/20"
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between text-xs font-mono font-bold">
-                <span className="text-[#2997ff] truncate">@{userA.user.login}</span>
+                <span className="text-[#38bdf8] truncate">@{userA.user.login}</span>
                 <span className="text-white text-[10px]">{Math.round(hpA)}%</span>
               </div>
-              {/* Health bar */}
-              <div className="h-2.5 sm:h-3 w-full bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/10 mt-0.5">
+              {/* Dual-layer Health Bar with Damage Lag */}
+              <div className="relative h-2.5 sm:h-3 w-full bg-black/70 rounded-full overflow-hidden p-0.5 border border-white/10 mt-0.5">
+                {/* Damage Lag Underlayer */}
                 <div
-                  className="h-full bg-gradient-to-r from-[#0071e3] to-[#2997ff] rounded-full transition-all duration-150"
+                  className="absolute top-0.5 left-0.5 bottom-0.5 bg-rose-500/60 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.max(0, damageLagA)}%` }}
+                />
+                {/* Main Health Bar */}
+                <div
+                  className="relative h-full bg-gradient-to-r from-[#0284c7] to-[#38bdf8] rounded-full transition-all duration-75 shadow-xs shadow-blue-400"
                   style={{ width: `${Math.max(0, hpA)}%` }}
                 />
               </div>
             </div>
           </div>
 
-          {/* VS Center Badge */}
+          {/* VS Center Badge & Round Status */}
           <div className="shrink-0 flex flex-col items-center px-1">
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-black shadow-xs font-mono tracking-wider">
-              VS
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-black shadow-xs font-mono tracking-wider">
+                VS
+              </span>
+            </div>
             <span className="text-[9px] font-mono text-[#8b949e] mt-0.5">
-              {Math.max(0, Math.floor(10 - fightTime))}s
+              {Math.max(0, Math.floor(10.5 - fightTimeRef.current))}s
             </span>
           </div>
 
-          {/* Fighter 2 (Purple) */}
+          {/* Fighter 2 (Purple Void Ronin) */}
           <div className="flex items-center justify-end gap-2 min-w-0 flex-1 text-right">
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between text-xs font-mono font-bold">
                 <span className="text-white text-[10px]">{Math.round(hpB)}%</span>
-                <span className="text-purple-400 truncate">@{userB.user.login}</span>
+                <span className="text-[#c084fc] truncate">@{userB.user.login}</span>
               </div>
-              {/* Health bar */}
-              <div className="h-2.5 sm:h-3 w-full bg-black/60 rounded-full overflow-hidden p-0.5 border border-white/10 mt-0.5 flex justify-end">
+              {/* Dual-layer Health Bar with Damage Lag */}
+              <div className="relative h-2.5 sm:h-3 w-full bg-black/70 rounded-full overflow-hidden p-0.5 border border-white/10 mt-0.5 flex justify-end">
+                {/* Damage Lag Underlayer */}
                 <div
-                  className="h-full bg-gradient-to-l from-purple-700 to-purple-400 rounded-full transition-all duration-150"
+                  className="absolute top-0.5 right-0.5 bottom-0.5 bg-rose-500/60 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.max(0, damageLagB)}%` }}
+                />
+                {/* Main Health Bar */}
+                <div
+                  className="relative h-full bg-gradient-to-l from-[#9333ea] to-[#c084fc] rounded-full transition-all duration-75 shadow-xs shadow-purple-400"
                   style={{ width: `${Math.max(0, hpB)}%` }}
                 />
               </div>
@@ -268,7 +1047,7 @@ export const StickmanFightModal: React.FC<StickmanFightModalProps> = ({
             <img
               src={userB.user.avatar_url}
               alt={userB.user.login}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl border-2 border-purple-500 object-cover shrink-0 shadow-md"
+              className="w-8 h-8 sm:w-11 sm:h-11 rounded-xl border-2 border-[#c084fc] object-cover shrink-0 shadow-md shadow-purple-500/20"
             />
           </div>
 
@@ -282,226 +1061,49 @@ export const StickmanFightModal: React.FC<StickmanFightModalProps> = ({
           </button>
         </div>
 
-        {/* The Animated Arena Screen */}
-        <div className="relative w-full aspect-[16/9] sm:aspect-[2/1] rounded-2xl bg-gradient-to-b from-[#090d16] via-[#0d121f] to-[#070a10] border border-white/10 overflow-hidden shadow-inner flex items-center justify-center">
-          {/* Neon Grid Stage Floor */}
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#2997ff]/10 to-transparent pointer-events-none" />
-          <div className="absolute inset-x-0 bottom-8 h-[1px] bg-gradient-to-r from-transparent via-[#2997ff]/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-8 flex justify-around opacity-20 pointer-events-none">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="w-[1px] h-full bg-[#2997ff]" />
-            ))}
-          </div>
+        {/* 60 FPS HTML5 Dynamic Canvas Screen */}
+        <div className="relative w-full aspect-[16/9] sm:aspect-[2/1] rounded-2xl bg-black border border-white/10 overflow-hidden shadow-2xl flex items-center justify-center">
+          <canvas
+            ref={canvasRef}
+            width={720}
+            height={360}
+            className="w-full h-full object-cover select-none"
+          />
 
-          {/* Floating Action Text Banner */}
-          <div className="absolute top-4 inset-x-0 flex flex-col items-center pointer-events-none z-20">
+          {/* Action Text Banner Overlay */}
+          <div className="absolute top-3 inset-x-0 flex flex-col items-center pointer-events-none z-20">
             <span
-              className={`font-black uppercase tracking-widest text-center px-4 py-1 rounded-full text-xs sm:text-sm shadow-lg transition-all transform duration-200 ${
+              className={`font-black uppercase tracking-widest text-center px-4 py-1 rounded-full text-xs sm:text-sm shadow-xl transition-all transform duration-200 ${
                 phase === 'ko' || phase === 'victory'
-                  ? 'bg-amber-400 text-black scale-110 font-mono animate-bounce'
-                  : phase === 'finisher'
+                  ? 'bg-amber-400 text-black scale-110 font-mono shadow-amber-400/30'
+                  : phase === 'hyper_beam'
                   ? 'bg-rose-600 text-white animate-pulse'
-                  : 'bg-black/60 backdrop-blur-md text-[#2997ff] border border-white/10'
+                  : 'bg-black/70 backdrop-blur-md text-[#38bdf8] border border-white/15'
               }`}
             >
               {actionText}
             </span>
           </div>
 
-          {/* SVG Vector Stickmen Arena */}
-          <svg
-            viewBox="0 0 640 320"
-            className="w-full h-full select-none"
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <defs>
-              <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#2997ff" />
-              </filter>
-              <filter id="glowPurple" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#c084fc" />
-              </filter>
-              <linearGradient id="blueLaser" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#2997ff" />
-                <stop offset="100%" stopColor="#ffffff" />
-              </linearGradient>
-            </defs>
-
-            {/* Fighter 1 (Blue Stickman) */}
-            <g
-              transform={`translate(${posX_A}, 220)`}
-              filter="url(#glowBlue)"
-              className="transition-transform duration-75"
+          {/* Arcade Sound & Speed Quick Overlays */}
+          <div className="absolute bottom-2.5 right-3 flex items-center gap-1.5 z-20">
+            <button
+              onClick={toggleSound}
+              className="p-1.5 rounded-lg bg-black/60 hover:bg-black/90 border border-white/10 text-white text-xs transition-all active:scale-90 cursor-pointer"
+              title={soundEnabled ? 'Mute arcade SFX' : 'Enable arcade SFX'}
+              aria-label="Toggle Sound Effects"
             >
-              {/* Crest Avatar above head */}
-              <circle cx="0" cy="-80" r="14" fill="#2997ff" opacity="0.3" />
-              <text
-                x="0"
-                y="-75"
-                textAnchor="middle"
-                fontSize="9"
-                fontWeight="bold"
-                fill="#ffffff"
-                fontFamily="sans-serif"
-              >
-                P1
-              </text>
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-zinc-500" />}
+            </button>
 
-              {/* Head */}
-              <circle
-                cx="0"
-                cy="-48"
-                r="11"
-                fill="#ffffff"
-                stroke="#2997ff"
-                strokeWidth="2.5"
-              />
-              {/* Headband */}
-              <path d="M -11 -48 L 11 -48" stroke="#2997ff" strokeWidth="3" />
-              <path d="M -10 -46 L -16 -40" stroke="#2997ff" strokeWidth="2.5" />
-
-              {/* Body & Limbs depending on pose */}
-              {poseA === 'victory' ? (
-                <>
-                  {/* Spine */}
-                  <line x1="0" y1="-37" x2="0" y2="-5" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  {/* Victory Raised Arms */}
-                  <line x1="0" y1="-30" x2="-18" y2="-55" stroke="#2997ff" strokeWidth="3" strokeLinecap="round" />
-                  <line x1="0" y1="-30" x2="18" y2="-55" stroke="#2997ff" strokeWidth="3" strokeLinecap="round" />
-                  {/* Golden Trophy held high */}
-                  <circle cx="0" cy="-66" r="7" fill="#fbbf24" />
-                  {/* Sturdy Stance Legs */}
-                  <line x1="0" y1="-5" x2="-15" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  <line x1="0" y1="-5" x2="15" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                </>
-              ) : poseA === 'knockout' ? (
-                <>
-                  {/* Knocked down flat */}
-                  <line x1="-20" y1="14" x2="15" y2="14" stroke="#8b949e" strokeWidth="3.5" strokeLinecap="round" />
-                  <line x1="-15" y1="14" x2="-25" y2="6" stroke="#8b949e" strokeWidth="3" strokeLinecap="round" />
-                  <line x1="10" y1="14" x2="22" y2="18" stroke="#8b949e" strokeWidth="3" strokeLinecap="round" />
-                  {/* Dizzy stars */}
-                  <text x="0" y="0" fontSize="12" fill="#fbbf24">💫</text>
-                </>
-              ) : poseA === 'punch' || poseA === 'dragon' ? (
-                <>
-                  {/* Spine leaning forward */}
-                  <line x1="0" y1="-37" x2="-8" y2="-5" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  {/* Forward punching arm with energy blast */}
-                  <line x1="0" y1="-30" x2="26" y2="-30" stroke="#2997ff" strokeWidth="3.5" strokeLinecap="round" />
-                  <line x1="0" y1="-30" x2="-12" y2="-18" stroke="#2997ff" strokeWidth="3" strokeLinecap="round" />
-                  {/* Punch shockwave */}
-                  <circle cx="34" cy="-30" r="10" fill="#2997ff" opacity="0.6" />
-                  <line x1="26" y1="-30" x2="52" y2="-30" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
-                  {/* Lunge Legs */}
-                  <line x1="-8" y1="-5" x2="-22" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  <line x1="-8" y1="-5" x2="14" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                </>
-              ) : (
-                <>
-                  {/* Standard combat stance / walk */}
-                  <line x1="0" y1="-37" x2="0" y2="-5" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  {/* Boxing guard arms */}
-                  <line x1="0" y1="-30" x2="14" y2="-34" stroke="#2997ff" strokeWidth="3" strokeLinecap="round" />
-                  <line x1="0" y1="-30" x2="-10" y2="-20" stroke="#2997ff" strokeWidth="3" strokeLinecap="round" />
-                  {/* Legs */}
-                  <line x1="0" y1="-5" x2="-12" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  <line x1="0" y1="-5" x2="12" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                </>
-              )}
-            </g>
-
-            {/* Fighter 2 (Purple Stickman) */}
-            <g
-              transform={`translate(${posX_B}, 220)`}
-              filter="url(#glowPurple)"
-              className="transition-transform duration-75"
+            <button
+              onClick={() => setSpeedMultiplier((prev) => (prev === 1 ? 2 : 1))}
+              className="px-2 py-1 rounded-lg bg-black/60 hover:bg-black/90 border border-white/10 text-white text-[11px] font-mono font-bold transition-all active:scale-90 cursor-pointer"
+              title="Toggle game speed"
             >
-              {/* Crest Avatar above head */}
-              <circle cx="0" cy="-80" r="14" fill="#c084fc" opacity="0.3" />
-              <text
-                x="0"
-                y="-75"
-                textAnchor="middle"
-                fontSize="9"
-                fontWeight="bold"
-                fill="#ffffff"
-                fontFamily="sans-serif"
-              >
-                P2
-              </text>
-
-              {/* Head */}
-              <circle
-                cx="0"
-                cy="-48"
-                r="11"
-                fill="#ffffff"
-                stroke="#c084fc"
-                strokeWidth="2.5"
-              />
-              {/* Headband */}
-              <path d="M -11 -48 L 11 -48" stroke="#c084fc" strokeWidth="3" />
-              <path d="M 10 -46 L 16 -40" stroke="#c084fc" strokeWidth="2.5" />
-
-              {/* Body & Limbs */}
-              {poseB === 'victory' ? (
-                <>
-                  {/* Spine */}
-                  <line x1="0" y1="-37" x2="0" y2="-5" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  {/* Victory Raised Arms */}
-                  <line x1="0" y1="-30" x2="-18" y2="-55" stroke="#c084fc" strokeWidth="3" strokeLinecap="round" />
-                  <line x1="0" y1="-30" x2="18" y2="-55" stroke="#c084fc" strokeWidth="3" strokeLinecap="round" />
-                  {/* Golden Trophy */}
-                  <circle cx="0" cy="-66" r="7" fill="#fbbf24" />
-                  {/* Legs */}
-                  <line x1="0" y1="-5" x2="-15" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  <line x1="0" y1="-5" x2="15" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                </>
-              ) : poseB === 'knockout' ? (
-                <>
-                  {/* Knocked down flat */}
-                  <line x1="-15" y1="14" x2="20" y2="14" stroke="#8b949e" strokeWidth="3.5" strokeLinecap="round" />
-                  <line x1="-22" y1="18" x2="-10" y2="14" stroke="#8b949e" strokeWidth="3" strokeLinecap="round" />
-                  <line x1="15" y1="14" x2="25" y2="6" stroke="#8b949e" strokeWidth="3" strokeLinecap="round" />
-                  {/* Dizzy stars */}
-                  <text x="0" y="0" fontSize="12" fill="#fbbf24">💫</text>
-                </>
-              ) : poseB === 'dragon' || poseB === 'kick' ? (
-                <>
-                  {/* Spine lunging left */}
-                  <line x1="0" y1="-37" x2="8" y2="-5" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  {/* High flying kick toward left */}
-                  <line x1="8" y1="-5" x2="-28" y2="-22" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
-                  <line x1="8" y1="-5" x2="16" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  {/* Kick spark */}
-                  <circle cx="-32" cy="-22" r="10" fill="#c084fc" opacity="0.6" />
-                  {/* Arms */}
-                  <line x1="0" y1="-30" x2="-14" y2="-32" stroke="#c084fc" strokeWidth="3" strokeLinecap="round" />
-                  <line x1="0" y1="-30" x2="12" y2="-18" stroke="#c084fc" strokeWidth="3" strokeLinecap="round" />
-                </>
-              ) : (
-                <>
-                  {/* Standard combat stance / walk facing left */}
-                  <line x1="0" y1="-37" x2="0" y2="-5" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  {/* Arms guard */}
-                  <line x1="0" y1="-30" x2="-14" y2="-34" stroke="#c084fc" strokeWidth="3" strokeLinecap="round" />
-                  <line x1="0" y1="-30" x2="10" y2="-20" stroke="#c084fc" strokeWidth="3" strokeLinecap="round" />
-                  {/* Legs */}
-                  <line x1="0" y1="-5" x2="-12" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                  <line x1="0" y1="-5" x2="12" y2="20" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" />
-                </>
-              )}
-            </g>
-
-            {/* Hit Sparks & Particle Clashes */}
-            {(phase === 'round1' || phase === 'round2' || phase === 'finisher') && (
-              <g transform="translate(320, 180)">
-                <circle cx="0" cy="0" r="14" fill="#fbbf24" opacity="0.7" />
-                <path d="M -18 0 L 18 0 M 0 -18 L 0 18 M -12 -12 L 12 12 M -12 12 L 12 -12" stroke="#ffffff" strokeWidth="2.5" />
-              </g>
-            )}
-          </svg>
+              {speedMultiplier}x
+            </button>
+          </div>
         </div>
 
         {/* Bottom Arena Footer Controls */}
@@ -510,10 +1112,10 @@ export const StickmanFightModal: React.FC<StickmanFightModalProps> = ({
             <span className="font-semibold text-white flex items-center gap-1.5">
               <Trophy className="w-4 h-4 text-amber-400" />
               {winner === 'A'
-                ? `@${userA.user.login} Leads (${winsA} – ${winsB})`
+                ? `@${userA.user.login} Dominates (${winsA} – ${winsB})`
                 : winner === 'B'
-                ? `@${userB.user.login} Leads (${winsB} – ${winsA})`
-                : `Tied Battle (${winsA} – ${winsB})`}
+                ? `@${userB.user.login} Dominates (${winsB} – ${winsA})`
+                : `Epic Deadlock Draw (${winsA} – ${winsB})`}
             </span>
           </div>
 
@@ -523,7 +1125,7 @@ export const StickmanFightModal: React.FC<StickmanFightModalProps> = ({
               className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-white border border-white/10 transition-all active:scale-95 cursor-pointer min-h-[40px]"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Replay Fight</span>
+              <span>Replay Battle</span>
             </button>
 
             {phase !== 'victory' && phase !== 'ko' && (
@@ -532,7 +1134,7 @@ export const StickmanFightModal: React.FC<StickmanFightModalProps> = ({
                 className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-[#8b949e] hover:text-white border border-white/10 transition-all active:scale-95 cursor-pointer min-h-[40px]"
               >
                 <FastForward className="w-3.5 h-3.5" />
-                <span>Skip to K.O.</span>
+                <span>Skip to Finisher</span>
               </button>
             )}
 
