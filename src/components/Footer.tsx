@@ -13,14 +13,8 @@ export const Footer: React.FC = () => {
               <span className="font-bold text-sm tracking-tight text-[var(--text-primary)]">
                 GitPulse
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-[#2997ff] font-mono border border-blue-500/20">
-                macOS + Primer Design
-              </span>
             </div>
-            <p className="mt-1 text-xs text-[#8b949e]">
-              A fusion of Apple HIG craft and GitHub developer aesthetics.
-            </p>
-            <p className="mt-1.5 text-xs text-[#8b949e] flex items-center justify-center md:justify-start gap-1">
+            <p className="mt-1 text-xs text-[#8b949e] flex items-center justify-center md:justify-start gap-1">
               By{' '}
               <a
                 href="https://github.com/bradleyjoejoseph"
@@ -29,19 +23,12 @@ export const Footer: React.FC = () => {
                 className="font-semibold text-[var(--text-primary)] hover:text-[#2997ff] hover:underline"
               >
                 Bradley Joseph
-              </a>{' '}
-              • University of York (CS & AI)
+              </a>
             </p>
           </div>
 
           {/* Center tech stack pills */}
           <div className="flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-mono text-[#8b949e]">
-            <span className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/5">
-              Apple HIG
-            </span>
-            <span className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/5">
-              GitHub Primer
-            </span>
             <span className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/5">
               React 19
             </span>
@@ -50,6 +37,9 @@ export const Footer: React.FC = () => {
             </span>
             <span className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/5">
               Tailwind 4
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/5">
+              GitHub API
             </span>
           </div>
 
@@ -79,7 +69,7 @@ export const Footer: React.FC = () => {
         {/* Footnote */}
         <div className="mt-6 pt-5 border-t border-white/5 text-center text-[11px] text-[#6e7681]">
           <p>
-            <strong>GitPulse</strong> — Developer Analytics, Versus Arena & Leaderboards built with Apple Human Interface Guidelines.
+            <strong>GitPulse</strong> — Developer Analytics, Versus Arena & Leaderboards.
           </p>
         </div>
       </div>
